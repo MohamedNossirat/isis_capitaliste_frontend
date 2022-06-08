@@ -27,7 +27,7 @@ export default function ProductView({prod, onProductDone, onProductBuy, qtmulti,
 
     //fonction qui demarre la fabrication d'un produit
     const startFabrication = () => {
-        if (prod.quantite > 0) {
+        if (prod.quantite >= 0) {
             prod.timeleft = prod.vitesse;
             prod.lastupdate = Date.now();
             lancerProduction({variables: {id: prod.id}});
@@ -36,7 +36,7 @@ export default function ProductView({prod, onProductDone, onProductBuy, qtmulti,
 
     //function pour calculer le maximum que le joueur peut acheter
     function calcMaxCanBuy() {
-        if (qtmulti == "Max") {
+        if (qtmulti === "Max") {
             let n = Math.floor(Math.log(1 - wordmoney * (1 - prod.croissance) / prod.cout) / Math.log(prod.croissance))
             setMaxQuantite(n)
             setCout(CoutDeNProducts(maxQuantite))
@@ -60,7 +60,7 @@ export default function ProductView({prod, onProductDone, onProductBuy, qtmulti,
 
     useEffect(() => {
         calcMaxCanBuy();
-    }, [qtmulti, wordmoney])
+    })
 
     //The principal Game Loop
     function calcScore() {
@@ -116,7 +116,7 @@ export default function ProductView({prod, onProductDone, onProductBuy, qtmulti,
                         <img className="is-clickable"
                              src={globaux.server_url + prod.logo}
                              onClick={startFabrication}
-                        />
+                         alt="product_image"/>
                     </figure>
                 </div>
                 <div className="card-content">

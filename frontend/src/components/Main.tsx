@@ -35,7 +35,7 @@ export default function Main({loadworld}: MainProps) {
             world.managers.filter((manager)=>(manager.seuil<=world.money&&!manager.unlocked));
         setManagersDeblock(managers.length);
 
-    },[world.money])
+    },[world.managers, world.money])
 
     //Afficher les unlocks
 
@@ -44,7 +44,7 @@ export default function Main({loadworld}: MainProps) {
             world.allunlocks.filter((unlock)=>(unlock.seuil<=world.money&&!unlock.unlocked));
         setUnlocksDeblock(unlocks.length);
 
-    },[world.money])
+    },[world.money, world.allunlocks])
 
     const hideManager = (c:boolean) => {
         setShowManager(c);
@@ -217,4 +217,4 @@ export default function Main({loadworld}: MainProps) {
             </>
         );
     }
-};
+}
