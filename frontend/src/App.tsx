@@ -77,7 +77,7 @@ query GetWorld {
 
 
 function App() {
-    const [userName, setUserName] = useState(localStorage.getItem("username")||initializeUSername);
+    const [userName, setUserName] = useState(localStorage.getItem("username")||initializeUSername());
     const {data} = useQuery(GET_WORLD,
         {context: {headers: {"x-user": userName}}});
 
@@ -118,7 +118,7 @@ function App() {
                             </div>
                         </nav>
                         <div className="container is-fluid">
-                            <Main loadworld={data.getWorld}/>
+                            <Main loadworld={data.getWorld} user={userName}/>
                         </div>
                     </div>
                     <div className="hero-foot">
