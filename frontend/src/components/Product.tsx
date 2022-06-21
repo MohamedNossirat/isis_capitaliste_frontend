@@ -4,10 +4,11 @@ import transform from "../../src/utils/transform";
 import transformTime from "../utils/transformTime";
 import { gql, useMutation } from "@apollo/client";
 import globaux from "../globals";
+import { toast } from "bulma-toast";
 
 type ProductProps = {
   prod: Product;
-  onProductDone: (product: Product) => void;
+  onProductDone: (product: Product, qt:number) => void;
   qtmulti: string;
   wordmoney: number;
   onProductBuy: (quantite: number, product: Product) => void;
@@ -88,12 +89,38 @@ export default function ProductView({
     onProductBuy(maxQuantite, prod);
     prod.cout = prod.cout * Math.pow(prod.croissance, maxQuantite);
     acheterQtProduit({ variables: { id: prod.id, quantite: maxQuantite } });
+    notifProduct(prod);
   }
 
   useEffect(() => {
     calcMaxCanBuy();
   });
 
+  const notifProduct = (product:Product) =>{
+    product.paliers.forEach(palier=>{
+      if(palier.seuil===prod.quantite){
+        if(palier.typeratio==="vitesse"){
+          prod.vitesse = prod.vitesse / palier.ratio;
+          toast({
+            "message": `${palier.name} pour ${prod.name} ${palier.typeratio} / ${palier.ratio}`,
+            position:"top-center",
+            type:"is-success",
+            duration:2000,
+          })
+        }
+        if(palier.typeratio==="gain"){
+          prod.vitesse = prod.vitesse * palier.ratio;
+          toast({
+            "message": `${palier.name} pour ${prod.name} ${palier.typeratio} X ${palier.ratio}`,
+            position:"top-center",
+            type:"is-success",
+            duration:2000,
+          })
+        }
+        palier.unlocked=true;
+      }
+    });
+  };
   //The principal Game Loop
   function calcScore() {
     if (prod.timeleft !== 0|| prod.managerUnlocked) {
@@ -105,10 +132,10 @@ export default function ProductView({
         qt = 1;
         prod.timeleft = 0;
         if (prod.managerUnlocked) {
-          qt += time / prod.vitesse;
+          qt += Math.trunc(time / prod.vitesse);
           prod.timeleft = prod.vitesse - (time % prod.vitesse);
         }
-        onProductDone(prod);
+        onProductDone(prod, qt);
       } else {
         prod.timeleft = -time;
       }

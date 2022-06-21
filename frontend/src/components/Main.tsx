@@ -5,6 +5,7 @@ import ProductView from "./Product";
 import transform from "../utils/transform";
 import Managers from "./Managers";
 import Allunlocks from "./Allunlocks";
+import Upgrades from "./upgrades";
 import { toast } from "bulma-toast";
 import globaux from "../globals";
 import { gql, useMutation } from "@apollo/client";
@@ -21,9 +22,12 @@ export default function Main({ loadworld, user }: MainProps) {
   const [qtmulti, setQtmulti] = useState("1");
   const [showManager, setShowManager] = useState(false);
   const [showUnlocks, setShowUnlocks] = useState(false);
+  const [showUpgrades, setShowUpgrades] = useState(false);
   const [managersDeblock, setManagersDeblock] = useState(0);
-  const [unlocksDeblock, setUnlocksDeblock] = useState(0);
-  const [productqUnlocks, setProductsUnlocks] = useState([]);
+  const [unlocksDeblock, setUnlocksDeblock] = useState<Palier[] | []>([]);
+  const [unlocksGeneraux, setUnlocksGeneraux] = useState<Palier[] | []>([]);
+  const [upgrades, setUpgrades] = useState<Palier[] | []>([]);
+
   const style = {
     backgroundImage: `url('${globaux.server_url}${world.logo}')`,
     backgroundSize: "cover",
@@ -39,18 +43,63 @@ export default function Main({ loadworld, user }: MainProps) {
     );
     setManagersDeblock(managers.length);
   }, [world.managers, world.money]);
-
+  //les unlocks concernant chaque produit
+  useEffect(() => {
+    let productsUnlocks: Palier[] = [];
+    world.products.forEach((product) => {
+      product.paliers.forEach((palier) => {
+        if (!palier.unlocked) {
+          productsUnlocks.push(palier);
+        }
+      });
+    });
+    setUnlocksDeblock(productsUnlocks);
+  }, [world]);
+  //les unlocks génerales
+  useEffect(() => {
+    let unlocksGeneraux: Palier[] = [];
+    world.allunlocks.forEach((unlock) => {
+      if (!unlock.unlocked) {
+        unlocksGeneraux.push(unlock);
+      }
+    });
+    setUnlocksGeneraux(unlocksGeneraux);
+    unlocksGeneraux.forEach((unlock) => {
+      if (
+        world.products.every((product) => product.quantite === unlock.seuil)
+      ) {
+        if (unlock.typeratio === "vitesse") {
+          world.products.every((product) => product.vitesse / unlock.ratio);
+          unlock.unlocked = true;
+          toast({
+            message: `L'unlock général ${unlock.name} a mis la ${unlock.typeratio}/${unlock.ratio}`,
+            type: "is-info",
+            position: "top-right",
+          });
+        }
+        if (unlock.typeratio === "gain") {
+          world.products.every((product) => product.revenu * unlock.ratio);
+          unlock.unlocked = true;
+          toast({
+            message: `L'unlock général ${unlock.name} a mis la ${unlock.typeratio}X${unlock.ratio}`,
+            type: "is-info",
+            position: "top-right",
+          });
+        }
+      }
+    });
+  }, [world]);
+  //Les Upgrades
+  useEffect(() => {
+    let upgrades = world.upgrades.filter((upgrade) => !upgrade.unlocked);
+    setUpgrades(upgrades);
+    console.log(upgrades);
+  }, [world]);
+  //reparser le monde
   useEffect(() => {
     setWorld(JSON.parse(JSON.stringify(loadworld)) as World);
   }, [loadworld]);
   //Afficher les unlocks
-
-  useEffect(() => {
-    let unlocks = world.allunlocks.filter(
-      (unlock) => unlock.seuil <= world.money && !unlock.unlocked
-    );
-    setUnlocksDeblock(unlocks.length);
-  }, [world.money, world.allunlocks]);
 
   const hideManager = (c: boolean) => {
     setShowManager(c);
@@ -59,9 +108,16 @@ export default function Main({ loadworld, user }: MainProps) {
   const hideUnlocks = (c: boolean) => {
     setShowUnlocks(c);
   };
+  const hideUpgrades = (c: boolean) => {
+    setShowUpgrades(c);
+  };
   //calculer les revenues des produits
-  const onProductionDone = (p: Product): void => {
-    let gain: number = p.revenu * p.quantite;
+  const onProductionDone = (p: Product, qt: number): void => {
+    let gain: number =
+      qt *
+      p.revenu *
+      p.quantite *
+      (1 + (world.angelbonus * world.activeangels) / 100);
     addToScore(gain);
     setWorld((world) => ({ ...world, score: world.score + p.quantite }));
   };
@@ -101,6 +157,8 @@ export default function Main({ loadworld, user }: MainProps) {
   const [engagerManager] = useMutation(ENGAGE_MANAGER, {
     context: { headers: { "x-user": user } },
   });
+  //engagement d'un manager 
+
   const hireManager = (manager: Palier) => {
     engagerManager({ variables: { name: manager.name } });
     let product: Product = world.products[manager.idcible - 1];
@@ -127,6 +185,14 @@ export default function Main({ loadworld, user }: MainProps) {
         });
       }
     }
+  };
+  const buyUpgrade = (upgrade: Palier) => {
+    let product: Product = world.products[upgrade.idcible - 1];
+      if (world.money >= upgrade.seuil) {
+        setWorld((world) => ({ ...world, money: world.money - upgrade.seuil }));
+        upgrade.unlocked = true;
+        console.log(product)
+      }
   };
 
   if (world.products.length === 0 && world.managers.length === 0)
@@ -201,11 +267,18 @@ export default function Main({ loadworld, user }: MainProps) {
               <div className="level-item has-text-centered">
                 <button
                   className="button-55"
-                  disabled={unlocksDeblock === 0}
                   onClick={(e) => setShowUnlocks(!showUnlocks)}
                 >
                   Unlocks
-                  {unlocksDeblock > 0 && (
+                </button>
+              </div>
+
+              <div className="level-item has-text-centered">
+                <button 
+                className="button-55"
+                onClick={(e)=> setShowUpgrades(true)}
+                >Upgrades
+                {upgrades.length > 0 && (
                     <span
                       style={{
                         position: "relative",
@@ -217,14 +290,9 @@ export default function Main({ loadworld, user }: MainProps) {
                         color: "white",
                       }}
                     >
-                      {unlocksDeblock ? unlocksDeblock : ""}
+                      {upgrades ? upgrades.length : ""}
                     </span>
-                  )}
-                </button>
-              </div>
-
-              <div className="level-item has-text-centered">
-                <button className="button-55">Upgrades</button>
+                  )}</button>
               </div>
             </div>
           </div>
@@ -252,11 +320,18 @@ export default function Main({ loadworld, user }: MainProps) {
           />
 
           <Allunlocks
-            allunlocks={world.allunlocks}
+            productsUnlocks={unlocksDeblock}
+            unlocksGeneraux={unlocksGeneraux}
             showUnlocks={showUnlocks}
             hideUnlocks={hideUnlocks}
             world={world}
-            useUnlock={hireManager}
+          />
+          <Upgrades
+          upgrades={upgrades}
+          hideUpgrades={hideUpgrades}
+          showUpgrades={showUpgrades}
+          world={world}
+          buyUpgrade={buyUpgrade}
           />
         </div>
       </>
