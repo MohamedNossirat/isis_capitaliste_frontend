@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import "bulma/css/bulma.css";
 import {gql, useQuery} from "@apollo/client";
 import Main from "./components/Main";
 
